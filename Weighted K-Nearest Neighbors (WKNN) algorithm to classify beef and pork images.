@@ -1,0 +1,314 @@
+#Preprocessng Data 
+
+import numpy as np
+from skimage.transform import resize
+from skimage.io import imread
+import matplotlib.pyplot as plt
+import os
+from skimage.color import rgb2hsv
+import cv2
+from PIL import Image
+import os
+
+
+#
+# Mengimpor modul yang dibutuhkan
+from PIL import Image  # Untuk membaca gambar
+import os  # Untuk operasi pada sistem berkas
+import numpy as np  # Untuk operasi matriks dan array
+import matplotlib.pyplot as plt  # Untuk plotting
+import cv2  # OpenCV untuk pengolahan gambar
+
+# Path ke direktori yang berisi data gambar
+datadir = '/Users/user/Deep Learning/PDP Afirmasi/Data Sapi Babi mba lidya/Train'
+
+# Path ke direktori untuk menyimpan gambar hasil
+save_dir = '/Users/user/Deep Learning/PDP Afirmasi/Data Sapi Babi mba lidya/Processed'
+
+# Membuat direktori jika belum ada
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
+
+# Inisialisasi list untuk menyimpan informasi gambar
+images    = []   # Dalam format matriks
+flat_data = []  # Dalam format vektor
+target    = []  # Label untuk setiap gambar
+
+# List untuk menyimpan nilai saluran warna Hue (H), Saturation (S), dan Value (V)
+H = []
+S = []
+V = []
+
+# Loop melalui setiap file gambar dalam direktori
+for img_file in os.listdir(datadir):
+    # Baca gambar
+    img_path = os.path.join(datadir, img_file)
+    img = np.array(Image.open(img_path))
+    
+    # Ambil label dari karakter pertama nama file dan konversi ke nilai kelas
+    label_char = img_file[-1]
+    if label_char == 's':
+        label = 'sapi'
+    elif label_char == 'b':
+        label = 'babi'
+    else:
+        label = 'Unknown'
+    
+    # Resize gambar
+    img_resized = cv2.resize(img, (400, 400))
+    
+    # Konversi gambar ke format RGB
+    img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+    
+    # Konversi gambar ke format HSV
+    img_hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
+    
+    # Hitung pembobotan pada setiap saluran warna HSV secara manual
+    weighted_hsv = np.empty_like(img_hsv, dtype=np.float32)
+
+    # Menggunakan nilai alpha, beta, dan gamma untuk pembobotan
+    alpha = 0.3
+    beta = 0.5
+    gamma = 0.2
+
+    # Lakukan pembobotan pada setiap saluran warna
+    # Pembobotan dilakukan dengan formula alpha * H + beta * S + gamma * V = 1
+    for i in range(img_hsv.shape[0]):
+        for j in range(img_hsv.shape[1]):
+            weighted_hsv[i, j, 0] = alpha * img_hsv[i, j, 0] + beta * img_hsv[i, j, 1] + gamma * img_hsv[i, j, 2]  # Hue (H)
+            weighted_hsv[i, j, 1] = alpha * img_hsv[i, j, 1] + beta * img_hsv[i, j, 2] + gamma * img_hsv[i, j, 0]  # Saturation (S)
+            weighted_hsv[i, j, 2] = alpha * img_hsv[i, j, 2] + beta * img_hsv[i, j, 0] + gamma * img_hsv[i, j, 1]  # Value (V)
+
+    # Flaten data HSV
+    flat_data.append(weighted_hsv)
+    
+    # Menyimpan nilai saluran warna Hue (H), Saturation (S), dan Value (V)
+    H.append(weighted_hsv[:, :, 0])
+    S.append(weighted_hsv[:, :, 1])
+    V.append(weighted_hsv[:, :, 2])
+    
+    # Menyimpan gambar hasil
+    img_resized_path = os.path.join(save_dir, f'resized_{img_file}')
+    img_rgb_path = os.path.join(save_dir, f'rgb_{img_file}')
+    img_hsv_path = os.path.join(save_dir, f'hsv_{img_file}')
+    
+    cv2.imwrite(img_resized_path, img_resized)
+    cv2.imwrite(img_rgb_path, img_rgb)
+    cv2.imwrite(img_hsv_path, cv2.cvtColor(weighted_hsv, cv2.COLOR_HSV2RGB))
+    
+    # Menambahkan ke list
+    images.append((img, img_resized, img_rgb, weighted_hsv))
+    target.append(label)
+
+# Menampilkan nilai saluran warna Hue (H), Saturation (S), dan Value (V) untuk setiap gambar
+for i in range(len(H)):
+    print(f"Image {i+1}:")
+    print("Hue (H):")
+    print(H[i])
+    print("Saturation (S):")
+    print(S[i])
+    print("Value (V):")
+    print(V[i])
+    print()
+
+ 
+    
+# Menampilkan gambar secara berurutan
+for idx, (img, img_resized, img_rgb, img_hsv) in enumerate(images):
+    fig, axes = plt.subplots(1, 4, figsize=(18, 5))
+    
+    # Menampilkan gambar asli
+    axes[0].imshow(img)
+    axes[0].set_title('Original Image')
+    axes[0].axis('off')
+    
+    # Menampilkan gambar yang diresize
+    axes[1].imshow(img_resized)
+    axes[1].set_title('Resized Image (400x400)')
+    axes[1].axis('off')
+    
+    # Menampilkan gambar yang diresize ke RGB
+    axes[2].imshow(img_rgb)
+    axes[2].set_title('RGB Image')
+    axes[2].axis('off')
+    
+    # Menampilkan informasi HSV di judul gambar
+    axes[3].imshow(cv2.cvtColor(img_hsv, cv2.COLOR_HSV2RGB))
+    axes[3].set_title(f'HSV Image\nHue: {np.mean(H[idx]):.2f}, Saturation: {np.mean(S[idx]):.2f}, Value: {np.mean(V[idx]):.2f}')
+    axes[3].axis('off')
+    
+    plt.show()
+
+print("Data gambar hasil telah disimpan di:", save_dir)
+
+# Membuat DataFrame dari flat_data
+# df = pd.DataFrame(flat_data)
+import pandas as pd
+# Meratakan array gambar menjadi array 2 dimensi
+flat_data_2d = np.reshape(flat_data, (len(flat_data), -1))
+
+# Membuat DataFrame dari flat_data yang telah diratakan
+df = pd.DataFrame(flat_data_2d)
+df['Target'] = target
+
+class_mapping = {'sapi': 1, 'babi': 2}
+df['Target'] = df['Target'].map(class_mapping)
+print(df['Target'].unique())
+
+#Mengisi NAN dengan nilai 0 sebelum konversi ke tipe integer 
+df['Target'] = df['Target'].fillna(0)
+df = df.astype(int)
+
+#print(df.head())  #Untuk menampilkan lima baris pertama dari dataframe
+print(df)
+print('Jalan')
+
+# Input and Output 
+#Mengambil input (x) dari kolom pixel gambar  #Kolom pixel gambar (dalam format  vektor) 
+#x=df.iloc[:,0:40000].values  #160000, ini harus revisi   #Diperiksa lagi   #Yakin? 400x400x3 = 480.000
+#ambil semua baris dan kolom kecuali kolom terakhir, konversi kedalam bentuk array numpy 
+x=df.iloc[:,0:479999].values
+
+#ini 
+#x=df.iloc[:,0:160000].values
+#Mengambil output (y) dari kolom label 'Target'
+#y=df.iloc[:,67500].values   
+#y=df.iloc[:,160000].values 
+
+#mengambil semua baris di kolom 480000, konversi ke dalam bentuk array numpy 
+y=df.iloc[:,480000].values 
+print('jalan')
+
+
+#Klasifikasi WKN 
+#GridSearchCV digunakan untuk melakukan pencarian parameter terbaik dengan metode grid search.
+#KFold digunakan untuk membagi data menjadi k fold (bagian) untuk validasi silang.
+from sklearn.model_selection import GridSearchCV, KFold 
+#Algoritma KNN yang akan kita gunakan 
+from sklearn.neighbors import KNeighborsClassifier
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import confusion_matrix
+print("jalan")
+
+
+#GridSearchCV digunakan untuk melakukan pencarian parameter terbaik dengan metode grid search.
+#KFold digunakan untuk membagi data menjadi k fold (bagian) untuk validasi silang.
+from sklearn.model_selection import GridSearchCV, KFold 
+#Algoritma KNN yang akan kita gunakan 
+from sklearn.neighbors import KNeighborsClassifier
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import confusion_matrix
+
+# Mendefinisikan data latih (x) dan label (y)
+x = x # definisikan data latih Anda di sini
+y = y # definisikan label Anda di sini
+
+# Inisialisasi objek KFold dengan jumlah split yang lebih kecil, ini akan membagi data menjadi 4 bagian untuk validasi silang. 
+kf = KFold(n_splits=4)
+#kf = KFold(n_splits=5)
+
+# Algoritma KNN yang akan kita gunakan 
+model = KNeighborsClassifier()
+
+# Membuat array k yang berisi angka dari 1 hingga 159. parameter yang akan diuji adalah 
+# n_neighbors, yaitu jumlah tetangga terdekat yang akan digunakan dalam KNN.
+k = np.arange(1, 160)
+# param adalah dictionary yang berisi parameter yang akan diuji. Di sini, kita hanya menguji n_neighbors
+param = {'n_neighbors': k}
+
+# Membuat objek model_grid dengan menggunakan GridSearchCV (model, param, cv=kf)
+model_grid = GridSearchCV(model, param, cv=kf)
+
+# Melatih model dengan menggunakan data x dan y 
+model_grid.fit(x, y)
+
+#Ini
+# Mendefinisikan data latih (x) dan label (y)
+x = x # definisikan data latih Anda di sini
+y = y # definisikan label Anda di sini
+# Mencetak parameter terbaik
+
+
+#print("Parameter terbaik:", model_grid.best_params_)
+
+# Melakukan pelatihan dan prediksi per kelas
+classes = df['Target'].unique()
+for cls in classes:
+    print(f"\nKelas: {cls}")
+    # Memilih sampel berdasarkan kelas
+    X_cls = x[df['Target'] == cls]
+    #X_cls = x[df['Target']== cls]
+    y_cls = y[df['Target'] == cls]
+    
+    # Memisahkan data menjadi data latih dan data uji
+   #X_train, X_test, y_train, y_test = train_test_split(X_cls, y_cls, test_size=0.10, random_state=0)
+    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=0)
+    #Feature Scaling
+    # Normalisasi fitur menggunakan MinMaxScaler
+    scaler = MinMaxScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+    
+    model = KNeighborsClassifier()
+    
+    # Membuat model KNN dengan parameter terbaik
+   #model = KNeighborsClassifier(n_neighbors=model_grid.best_params_['n_neighbors'], weights='distance', metric='euclidean')
+    model = KNeighborsClassifier(n_neighbors=4,weights='distance', metric='euclidean')
+    # Melatih model
+    model.fit(X_train, y_train)
+    
+    # Memprediksi output
+    y_pred = model.predict(X_test)
+    y_pred
+    print("Prediksinya adalah:", y_pred)
+    
+    # Actual output
+    y_test
+    print("Hasil Sebenarnya adalah :", y_test)
+    
+    # Evaluation of the model
+    from sklearn.metrics import accuracy_score
+    print("The accuracy of the model is ",accuracy_score(y_pred,y_test)*100,"%")
+
+#Menghitung dan mencetak matriks kebingungan
+cm = confusion_matrix(y_test, y_pred)
+print("Confusion Matrix:\n", cm)
+
+# Classification report
+from sklearn import metrics
+
+# Mendapatkan laporan klasifikasi sebagai string
+report_str = metrics.classification_report(y_test, y_pred)
+
+# Mencetak laporan klasifikasi dengan format yang lebih rapi
+print("Classification Report:")
+print(report_str)
+
+#Plotting hasil klasifikasi
+import itertools 
+plt.figure(figsize=(8, 6))
+plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+plt.title('Confusion Matrix')
+plt.colorbar()
+tick_marks = np.arange(len(classes))
+plt.xticks(tick_marks, classes, rotation=45)
+plt.yticks(tick_marks, classes)
+    
+fmt = 'd'
+thresh = cm.max() / 2.
+for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+    plt.text(j, i, format(cm[i, j], fmt),
+        horizontalalignment="center",
+        color="white" if cm[i, j] > thresh else "black")
+
+plt.ylabel('True label')
+plt.xlabel('Predicted label')
+plt.tight_layout()
+plt.show()
+
+
+
