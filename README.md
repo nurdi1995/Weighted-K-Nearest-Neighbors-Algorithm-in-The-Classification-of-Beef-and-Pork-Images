@@ -1,2 +1,2 @@
 # Weighted-K-Nearest-Neighbors-Algorithm-in-The-Classification-of-Beef-and-Pork-Images
-Penelitian ini menggunakan algoritma Weighted K-Nearest Neighbors (WKNN) untuk mengklasifikasikan citra daging sapi dan daging babi. WKNN meningkatkan akurasi dengan memberikan bobot lebih pada tetangga yang lebih dekat, sehingga membantu dalam diferensiasi daging yang akurat.
+This study uses the Weighted K-Nearest Neighbors (WKNN) algorithm to classify beef and pork images. WKNN improves accuracy by assigning more weight to closer neighbors, aiding in accurate meat differentiation.
